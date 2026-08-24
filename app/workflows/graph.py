@@ -9,7 +9,7 @@ from app.domain.models.recovery import (
     ExecutionRequest,
     ExecutionResult,
 )
-from app.tools.registry import ToolRegistry
+from app.tools.service import RecoveryToolService
 from app.workflows.nodes import (
     classify_node,
     diagnosis_node,
@@ -60,62 +60,28 @@ def execute_node(
     """
     Execute an already policy-approved recovery action.
 
-    This node is reached only through policy-controlled routing.
+    The workflow delegates execution to the RecoveryToolService.
     """
 
-    recovery_plan = state["recovery_plan"]
-    action = recovery_plan.action
+    action = state["recovery_plan"].action
 
-    execution_request = ExecutionRequest(
+    request = ExecutionRequest(
         run_id=state.get(
             "run_id",
             f"execution_{state['payment'].payment_id}",
         ),
-        payment_id=state["payment"].payment_id,
         action=action,
-        action_parameters=recovery_plan.action_parameters,
+        payment_id=state["payment"].payment_id,
+        action_parameters=(
+            state["recovery_plan"].action_parameters
+        ),
     )
 
-    registry = ToolRegistry()
-
-    tool = registry.get_tool(
-        action,
-    )
-
-    if tool is None:
-        result = ExecutionResult(
-            success=False,
-            action=action,
-            message=(
-                "No execution tool is registered for this "
-                "recovery action."
-            ),
-            error_code="TOOL_NOT_REGISTERED",
-        )
-
-        audit_event = create_execution_audit_event(
-            state=state,
-            action=action.value,
-            result="failed",
-            decision="tool_not_registered",
-            reason_codes=["TOOL_NOT_REGISTERED"],
-            metadata={
-                "error_code": result.error_code,
-            },
-        )
-
-        return {
-            "execution_result": result,
-            "workflow_status": "EXECUTION_FAILED",
-            "errors": [
-                f"No tool registered for action: {action.value}",
-            ],
-            "audit_trail": [audit_event],
-        }
+    service = RecoveryToolService()
 
     try:
-        result = tool.execute(
-            execution_request,
+        result = service.execute(
+            request,
         )
 
     except Exception as exc:
@@ -167,6 +133,29 @@ def execute_node(
             "audit_trail": [audit_event],
         }
 
+    # Special case: no tool is registered for this action.
+    if result.error_code == "TOOL_NOT_REGISTERED":
+        audit_event = create_execution_audit_event(
+            state=state,
+            action=action.value,
+            result="failed",
+            decision="tool_not_registered",
+            reason_codes=["TOOL_NOT_REGISTERED"],
+            metadata={
+                "error_code": result.error_code,
+            },
+        )
+
+        return {
+            "execution_result": result,
+            "workflow_status": "EXECUTION_FAILED",
+            "errors": [
+                f"No tool registered for action: {action.value}",
+            ],
+            "audit_trail": [audit_event],
+        }
+
+    # Generic tool execution failure.
     audit_event = create_execution_audit_event(
         state=state,
         action=action.value,
@@ -191,8 +180,6 @@ def execute_node(
         ],
         "audit_trail": [audit_event],
     }
-
-
 def blocked_node(
     state: RecoveryState,
 ) -> dict:

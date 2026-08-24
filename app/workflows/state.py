@@ -1,5 +1,5 @@
 from typing import Annotated, TypedDict
-
+from operator import add
 from app.domain.models.audit import AuditEvent
 from app.domain.models.payment import PaymentRiskRecord
 from app.domain.models.recovery import (
@@ -57,7 +57,7 @@ class RecoveryState(TypedDict, total=False):
     # Audit and errors
     audit_trail: Annotated[
         list[AuditEvent],
-        merge_audit_trail,
+        add,
     ]
 
     errors: list[str]

@@ -44,7 +44,7 @@ def test_execute_node_handles_tool_exception(
             return ExplodingTool()
 
     monkeypatch.setattr(
-        "app.workflows.graph.ToolRegistry",
+        "app.tools.service.ToolRegistry",
         ExplodingRegistry,
     )
 
