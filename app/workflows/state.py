@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import Annotated, TypedDict
 
 from app.domain.models.audit import AuditEvent
 from app.domain.models.payment import PaymentRiskRecord
@@ -9,6 +9,17 @@ from app.domain.models.recovery import (
     RecoveryPlan,
     VerificationResult,
 )
+
+
+def merge_audit_trail(
+    existing: list[AuditEvent],
+    new: list[AuditEvent],
+) -> list[AuditEvent]:
+    """
+    Accumulate audit events across workflow nodes.
+    """
+
+    return existing + new
 
 
 class RecoveryState(TypedDict, total=False):
@@ -38,10 +49,15 @@ class RecoveryState(TypedDict, total=False):
     # Execution and verification
     execution_result: ExecutionResult
     verification_result: VerificationResult
+
     # Workflow terminal status
     workflow_status: str
     recovered_amount: float
 
     # Audit and errors
-    audit_trail: list[AuditEvent]
+    audit_trail: Annotated[
+        list[AuditEvent],
+        merge_audit_trail,
+    ]
+
     errors: list[str]

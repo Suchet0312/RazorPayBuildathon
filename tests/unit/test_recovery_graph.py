@@ -50,8 +50,9 @@ def test_recovery_graph_runs_end_to_end() -> None:
         result["policy_decision"].approved
     )
     assert result["workflow_status"] in {
-        "EXECUTION_READY",
-        "POLICY_BLOCKED",
-        "NO_ACTION_REQUIRED",
-        "MERCHANT_ESCALATION_REQUIRED",
-    }
+    "RECOVERY_VERIFIED",
+    "RECOVERY_NOT_VERIFIED",
+    "POLICY_BLOCKED",
+    "NO_ACTION_REQUIRED",
+    "MERCHANT_ESCALATION_REQUIRED",
+}

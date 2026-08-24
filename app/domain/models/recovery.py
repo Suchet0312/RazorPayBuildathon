@@ -55,6 +55,27 @@ class PolicyDecision(BaseModel):
     )
 
 
+class ExecutionRequest(BaseModel):
+    """
+    Controlled request passed from the workflow
+    to an approved recovery execution tool.
+    """
+
+    run_id: str = Field(
+        min_length=1,
+    )
+
+    payment_id: str = Field(
+        min_length=1,
+    )
+
+    action: RecoveryAction
+
+    action_parameters: dict[str, Any] = Field(
+        default_factory=dict,
+    )
+
+
 class ExecutionResult(BaseModel):
     success: bool
 
