@@ -1,0 +1,8 @@
+fastapi 
+uvicorn 
+pydantic-settings 
+pandas 
+scikit-learn 
+langgraph 
+langchain 
+python-dotenv
