@@ -38,6 +38,8 @@ class RecoveryState(TypedDict, total=False):
     # Execution and verification
     execution_result: ExecutionResult
     verification_result: VerificationResult
+    # Workflow terminal status
+    workflow_status: str
     recovered_amount: float
 
     # Audit and errors
