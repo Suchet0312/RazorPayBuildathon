@@ -15,12 +15,23 @@ AUTOMATED_ACTIONS = {
     RecoveryAction.RETRY_LATER,
     RecoveryAction.SEND_RECOVERY_LINK,
     RecoveryAction.SUGGEST_ALTERNATE_METHOD,
+    RecoveryAction.MANDATE_RETRY,
+    RecoveryAction.PROMISE_TO_PAY,
+    RecoveryAction.B2B_RECEIVABLES_CHASE,
+    RecoveryAction.HINGLISH_VOICE_RECOVERY,
 }
-
 
 RETRY_ACTIONS = {
     RecoveryAction.RETRY_NOW,
     RecoveryAction.RETRY_LATER,
+    RecoveryAction.MANDATE_RETRY,
+}
+
+CONTACT_ACTIONS = {
+    RecoveryAction.SEND_RECOVERY_LINK,
+    RecoveryAction.PROMISE_TO_PAY,
+    RecoveryAction.HINGLISH_VOICE_RECOVERY,
+    RecoveryAction.B2B_RECEIVABLES_CHASE,
 }
 
 
@@ -91,7 +102,7 @@ def evaluate_policy(
 
     # Customer contact limit
     if (
-        action == RecoveryAction.SEND_RECOVERY_LINK
+        action in CONTACT_ACTIONS
         and payment.contact_count >= MAX_CUSTOMER_CONTACTS
     ):
         return PolicyDecision(

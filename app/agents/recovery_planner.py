@@ -8,6 +8,25 @@ HIGH_RECOVERY_PROBABILITY_THRESHOLD = 0.70
 LOW_RECOVERY_PROBABILITY_THRESHOLD = 0.40
 REPEATED_ATTEMPTS_THRESHOLD = 2
 
+# Failure reasons that indicate mandate/recurring payment issues
+MANDATE_FAILURE_REASONS = {
+    "mandate_rejected",
+    "mandate_expired",
+    "nach_bounce",
+    "ecs_bounce",
+    "debit_failed",
+    "subscription_failed",
+    "subscription_expired",
+}
+
+# Failure reasons that indicate B2B / invoice scenarios
+B2B_FAILURE_REASONS = {
+    "invoice_overdue",
+    "b2b_overdue",
+    "payment_promised",
+    "credit_limit_exceeded",
+}
+
 
 def calculate_expected_recovery_value(
     amount: float,
@@ -36,7 +55,7 @@ def calculate_priority_score(
     recovery_probability: float,
 ) -> float:
     """
-    For the Day 4 MVP, expected recovery value is the priority score.
+    Priority score is the expected recovery value.
     """
 
     return calculate_expected_recovery_value(
@@ -56,9 +75,6 @@ def plan_recovery_action(
 
     This function only recommends an action.
     It does not approve or execute the action.
-
-    Final execution authority will belong to the deterministic
-    Policy Guardian in Day 5.
     """
 
     expected_recovery_value = calculate_expected_recovery_value(
@@ -95,9 +111,21 @@ def _select_recovery_action(
 ) -> tuple[RecoveryAction, list[str], dict]:
     """
     Deterministically select exactly one allow-listed recovery action.
+
+    Priority order:
+      1. Permanent failures → DO_NOTHING
+      2. Mandate / recurring failures → MANDATE_RETRY
+      3. B2B / receivables failures → B2B_RECEIVABLES_CHASE
+      4. Customer action required (promise-to-pay pattern) → PROMISE_TO_PAY
+      5. Checkout abandonment → SEND_RECOVERY_LINK
+      6. Repeated attempts → SUGGEST_ALTERNATE_METHOD
+      7. Temporary + high probability → RETRY_LATER
+      8. Temporary + low attempts → RETRY_NOW
+      9. Default → ESCALATE_TO_MERCHANT
     """
 
     reason_codes = list(diagnosis.reason_codes)
+    failure_reason = (payment.failure_reason or "").lower().strip()
 
     # 1. Permanent failures should not trigger automatic recovery.
     if failure_category == FailureCategory.PERMANENT_FAILURE:
@@ -110,7 +138,53 @@ def _select_recovery_action(
             {},
         )
 
-    # 2. Customer action is required.
+    # 2. Mandate / recurring / subscription failures → MANDATE_RETRY
+    if failure_reason in MANDATE_FAILURE_REASONS:
+        return (
+            RecoveryAction.MANDATE_RETRY,
+            reason_codes + [
+                "MANDATE_OR_SUBSCRIPTION_FAILURE",
+                "MANDATE_RETRY_RECOMMENDED",
+            ],
+            {
+                "retry_sequence": ["T+1h", "T+24h", "T+72h"],
+                "notify_customer": True,
+            },
+        )
+
+    # 3. B2B receivables / invoice overdue → B2B_RECEIVABLES_CHASE
+    if failure_reason in B2B_FAILURE_REASONS:
+        return (
+            RecoveryAction.B2B_RECEIVABLES_CHASE,
+            reason_codes + [
+                "B2B_INVOICE_OVERDUE",
+                "B2B_RECEIVABLES_CHASE_RECOMMENDED",
+            ],
+            {
+                "escalation_levels": ["reminder", "senior_ar", "legal"],
+                "days_overdue": 0,
+            },
+        )
+
+    # 4. Customer action required with multiple failed attempts → PROMISE_TO_PAY
+    if (
+        failure_category == FailureCategory.CUSTOMER_ACTION_REQUIRED
+        and payment.attempt_count >= REPEATED_ATTEMPTS_THRESHOLD
+    ):
+        return (
+            RecoveryAction.PROMISE_TO_PAY,
+            reason_codes + [
+                "CUSTOMER_ACTION_REQUIRED",
+                "REPEATED_ATTEMPTS",
+                "PROMISE_TO_PAY_RECOMMENDED",
+            ],
+            {
+                "commitment_window_days": 3,
+                "follow_up_enabled": True,
+            },
+        )
+
+    # 5. Customer action required (first attempt) → SEND_RECOVERY_LINK
     if failure_category == FailureCategory.CUSTOMER_ACTION_REQUIRED:
         return (
             RecoveryAction.SEND_RECOVERY_LINK,
@@ -121,7 +195,7 @@ def _select_recovery_action(
             {},
         )
 
-    # 3. Checkout abandonment.
+    # 6. Checkout abandonment → SEND_RECOVERY_LINK
     if failure_category == FailureCategory.CHECKOUT_ABANDONMENT:
         return (
             RecoveryAction.SEND_RECOVERY_LINK,
@@ -132,7 +206,7 @@ def _select_recovery_action(
             {},
         )
 
-    # 4. Repeated failures suggest changing the payment approach.
+    # 7. Repeated failures → SUGGEST_ALTERNATE_METHOD
     if payment.attempt_count >= REPEATED_ATTEMPTS_THRESHOLD:
         return (
             RecoveryAction.SUGGEST_ALTERNATE_METHOD,
@@ -143,7 +217,7 @@ def _select_recovery_action(
             {},
         )
 
-    # 5. Temporary failure with high recovery probability.
+    # 8. Temporary failure with high recovery probability → RETRY_LATER
     if (
         failure_category == FailureCategory.TEMPORARY_FAILURE
         and recovery_probability >= HIGH_RECOVERY_PROBABILITY_THRESHOLD
@@ -160,7 +234,7 @@ def _select_recovery_action(
             },
         )
 
-    # 6. Temporary failure with a low number of attempts.
+    # 9. Temporary failure with a low number of attempts → RETRY_NOW
     if (
         failure_category == FailureCategory.TEMPORARY_FAILURE
         and payment.attempt_count < REPEATED_ATTEMPTS_THRESHOLD
@@ -175,7 +249,7 @@ def _select_recovery_action(
             {},
         )
 
-    # 7. Low-confidence or ambiguous cases are escalated.
+    # 10. Low-confidence or ambiguous cases are escalated.
     return (
         RecoveryAction.ESCALATE_TO_MERCHANT,
         reason_codes + [
@@ -185,22 +259,15 @@ def _select_recovery_action(
         {},
     )
 
+
 def rank_recovery_candidates(
     candidates: list[tuple[PaymentRiskRecord, RecoveryPlan]],
 ) -> list[tuple[PaymentRiskRecord, RecoveryPlan]]:
     """
     Rank recovery candidates deterministically.
 
-    Primary ranking:
-        Higher priority_score first.
-
-    Tie breakers:
-        1. Higher expected_recovery_value
-        2. Higher recovery action value is not considered
-        3. Stable payment_id ordering
-
-    The final payment_id tie breaker ensures identical inputs always
-    produce the same ordering.
+    Primary ranking: Higher priority_score first.
+    Tie breakers: higher expected_recovery_value, then stable payment_id.
     """
 
     return sorted(
@@ -211,4 +278,3 @@ def rank_recovery_candidates(
             candidate[0].payment_id,
         ),
     )
-

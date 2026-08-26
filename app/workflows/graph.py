@@ -65,16 +65,21 @@ def execute_node(
 
     action = state["recovery_plan"].action
 
+    payment = state["payment"]
     request = ExecutionRequest(
         run_id=state.get(
             "run_id",
-            f"execution_{state['payment'].payment_id}",
+            f"execution_{payment.payment_id}",
         ),
         action=action,
-        payment_id=state["payment"].payment_id,
+        payment_id=payment.payment_id,
         action_parameters=(
             state["recovery_plan"].action_parameters
         ),
+        amount=payment.amount,
+        currency=payment.currency,
+        customer_id=payment.customer_id,
+        merchant_id=payment.merchant_id,
     )
 
     service = RecoveryToolService()

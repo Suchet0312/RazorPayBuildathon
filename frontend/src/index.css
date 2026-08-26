@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@theme {
+  --color-rp-blue: #02042A;
+  --color-rp-cyan: #0DF5E3;
+  --color-rp-green: #00D09C;
+  --color-rp-red: #F50057;
+  --color-rp-amber: #F0B90B;
+  --color-rp-magenta: #D946EF;
+  --color-bg-dark: #0A0A0B;
+  --color-bg-panel: #121214;
+  --color-bg-panel-hover: #1A1A1D;
+  
+  --font-family-sans: "Inter", "Roboto", system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-bg-dark);
+    color: #E2E8F0;
+    font-family: var(--font-family-sans);
+    background-image: 
+      linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 20px 20px;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg-dark); 
+}
+::-webkit-scrollbar-thumb {
+  background: #333; 
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #555; 
+}
+
+/* Glow Utilities */
+@layer utilities {
+  .glow-cyan {
+    box-shadow: 0 0 10px rgba(13, 245, 227, 0.5), 0 0 20px rgba(13, 245, 227, 0.3);
+  }
+  .glow-green {
+    box-shadow: 0 0 10px rgba(0, 208, 156, 0.5), 0 0 20px rgba(0, 208, 156, 0.3);
+  }
+  .glow-red {
+    box-shadow: 0 0 10px rgba(245, 0, 87, 0.5), 0 0 20px rgba(245, 0, 87, 0.3);
+  }
+  .text-glow-cyan {
+    text-shadow: 0 0 8px rgba(13, 245, 227, 0.7);
+  }
+}

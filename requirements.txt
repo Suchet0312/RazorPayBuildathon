@@ -1,8 +1,31 @@
-fastapi 
-uvicorn 
-pydantic-settings 
-pandas 
-scikit-learn 
-langgraph 
-langchain 
-python-dotenv
+# Core web framework
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+
+# Settings & validation
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+
+# Data & ML
+pandas>=2.2.0
+scikit-learn>=1.4.0
+joblib>=1.4.0
+numpy>=1.26.0
+
+# Agentic workflow
+langgraph>=0.1.0
+langchain>=0.2.0
+langchain-core>=0.2.0
+
+# Database
+sqlalchemy>=2.0.0
+
+# Razorpay API
+razorpay>=1.4.0
+
+# HTTP
+httpx>=0.27.0
+python-dotenv>=1.0.0
+
+# MCP (optional – install separately if needed)
+# mcp[cli]>=1.0.0
