@@ -1,2 +1,55 @@
-.venv
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Environment
 .env
+*.env.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# ML artifacts (regenerate with train_model.py)
+# app/intelligence/artifacts/*.joblib
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.xml
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# Docs / planning files
+*.docx
+*.xlsx
+*.pdf
+*_Handoff.md
+*_Timeline*
+*_SRS*
+*_Sprint*
+
+# Logs
+*.log
+logs/
